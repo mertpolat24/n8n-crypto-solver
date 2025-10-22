@@ -1,5 +1,3 @@
-
-
 const crypto = require('crypto');
 
 const PRIVATE_KEY_PEM = process.env.RSA_PRIVATE_KEY;
@@ -21,8 +19,8 @@ module.exports = (req, res) => {
         }
 
         const privateKeyObject = crypto.createPrivateKey(PRIVATE_KEY_PEM);
-      
-        const symmetricKeyBuffer = crypto.privateDecrypt(
+        
+        const rawSymmetricKeyBuffer = crypto.privateDecrypt( // 'raw' olarak yeniden adlandırıldı
             {
                 key: privateKeyObject, 
                 padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
@@ -31,7 +29,17 @@ module.exports = (req, res) => {
             Buffer.from(encrypted_aes_key, 'base64')
         );
 
-        const decryptedKeyBase64 = symmetricKeyBuffer.toString('base64');
+        // KRİTİK DÜZELTME: Anahtarın sadece ilk 16 baytını al (128 bit için)
+        let symmetricKeyBuffer;
+        if (rawSymmetricKeyBuffer.length !== 16) {
+             // 18 bayt gelme durumunda ilk 16 baytı alır (Temizler)
+             symmetricKeyBuffer = rawSymmetricKeyBuffer.subarray(0, 16); 
+             // Konsola uyarı log'u ekleyebilirsiniz: console.log(`Anahtar boyutu düzeltildi: ${rawSymmetricKeyBuffer.length} -> ${symmetricKeyBuffer.length}`);
+        } else {
+             symmetricKeyBuffer = rawSymmetricKeyBuffer;
+        }
+
+        const decryptedKeyBase64 = symmetricKeyBuffer.toString('base64'); // Şimdi temizlenmiş 16 baytlık anahtarı Base64'e çeviriyoruz.
 
         res.status(200).json({
             decrypted_aes_key: decryptedKeyBase64,
